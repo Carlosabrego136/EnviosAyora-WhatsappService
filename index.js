@@ -41,6 +41,15 @@ const client = new Client({
     executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || undefined,
     args: ['--no-sandbox', '--disable-setuid-sandbox'],
   },
+  // Si WhatsApp vuelve a cambiar la página de WhatsApp Web de forma que
+  // whatsapp-web.js no pueda detectar la versión automáticamente (el error
+  // "Cannot read properties of null (reading '1')"), esto usa una versión
+  // conocida y funcional en vez de fallar.
+  webVersionCache: {
+    type: 'remote',
+    remotePath:
+      'https://raw.githubusercontent.com/wppconnect-team/wa-version/main/html/2.3000.1023616684-alpha.html',
+  },
 });
 
 client.on('qr', (qr) => {
