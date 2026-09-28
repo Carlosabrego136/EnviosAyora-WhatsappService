@@ -16,6 +16,7 @@
 require('dotenv').config();
 const express = require('express');
 const qrcodeTerminal = require('qrcode-terminal');
+const QRCode = require('qrcode');
 const { Client, LocalAuth } = require('whatsapp-web.js');
 
 const PORT = process.env.PORT || 4000;
@@ -30,6 +31,7 @@ const app = express();
 app.use(express.json());
 
 let clienteListo = false;
+let ultimoQR = null; // guarda el QR más reciente para poder mostrarlo como imagen en /qr
 
 const client = new Client({
   authStrategy: new LocalAuth({ dataPath: '.wwebjs_auth' }),
@@ -53,12 +55,15 @@ const client = new Client({
 });
 
 client.on('qr', (qr) => {
+  ultimoQR = qr;
   console.log('\n=== Escanea este QR con WhatsApp (Dispositivos vinculados) ===\n');
   qrcodeTerminal.generate(qr, { small: true });
+  console.log(`También puedes verlo como imagen en /qr?token=${SERVICE_TOKEN}`);
 });
 
 client.on('ready', () => {
   clienteListo = true;
+  ultimoQR = null; // ya no hace falta, evita mostrar un QR viejo por error
   console.log('✅ WhatsApp conectado y listo para enviar notificaciones.');
 });
 
@@ -85,6 +90,61 @@ function autenticado(req) {
 
 app.get('/estado', (req, res) => {
   res.json({ conectado: clienteListo });
+});
+
+// Página con el QR como imagen real (no texto), para evitar que salga
+// distorsionado al tomarle captura desde los logs de Render. Protegida con
+// el mismo SERVICE_TOKEN para que nadie más pueda vincular un dispositivo.
+// Se actualiza sola cada 20 segundos, igual que el QR se regenera.
+app.get('/qr', async (req, res) => {
+  if (req.query.token !== SERVICE_TOKEN) {
+    return res.status(401).send('Token inválido. Agrega ?token=TU_SERVICE_TOKEN a la URL.');
+  }
+
+  res.set('Content-Type', 'text/html; charset=utf-8');
+
+  if (clienteListo) {
+    return res.send(`
+      <!doctype html>
+      <html lang="es"><head><meta charset="utf-8" /><title>WhatsApp conectado</title></head>
+      <body style="display:flex;align-items:center;justify-content:center;height:100vh;margin:0;font-family:sans-serif;background:#0f172a;color:#fff;">
+        <h2>✅ WhatsApp ya está conectado y listo para enviar notificaciones.</h2>
+      </body></html>
+    `);
+  }
+
+  if (!ultimoQR) {
+    return res.send(`
+      <!doctype html>
+      <html lang="es"><head><meta charset="utf-8" /><meta http-equiv="refresh" content="5" /><title>Generando QR...</title></head>
+      <body style="display:flex;align-items:center;justify-content:center;height:100vh;margin:0;font-family:sans-serif;background:#0f172a;color:#fff;">
+        <h2>Generando el código QR, espera unos segundos... (esta página se actualiza sola)</h2>
+      </body></html>
+    `);
+  }
+
+  try {
+    const dataUrl = await QRCode.toDataURL(ultimoQR, { width: 360, margin: 2 });
+    return res.send(`
+      <!doctype html>
+      <html lang="es">
+      <head>
+        <meta charset="utf-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <meta http-equiv="refresh" content="20" />
+        <title>Escanea el QR — ENVIOS AYORA</title>
+      </head>
+      <body style="display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;margin:0;font-family:sans-serif;background:#0f172a;color:#fff;gap:16px;">
+        <h2 style="text-align:center;padding:0 20px;">Escanea este código con WhatsApp<br/>(Dispositivos vinculados → Vincular un dispositivo)</h2>
+        <img src="${dataUrl}" alt="Código QR de WhatsApp" style="width:320px;height:320px;background:#fff;padding:16px;border-radius:12px;" />
+        <p style="color:#94a3b8;">Esta página se actualiza sola cada 20 segundos.</p>
+      </body>
+      </html>
+    `);
+  } catch (err) {
+    console.error('Error generando imagen de QR:', err);
+    return res.status(500).send('No se pudo generar la imagen del QR.');
+  }
 });
 
 app.post('/enviar', async (req, res) => {
