@@ -1,0 +1,18 @@
+{
+  "name": "ayora-whatsapp-service",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Microservicio que mantiene una sesión de WhatsApp Web conectada (vía QR) y expone un endpoint /enviar para que el sistema principal le pida mandar notificaciones.",
+  "engines": {
+    "node": ">=16.20.2"
+  },
+  "scripts": {
+    "start": "node index.js"
+  },
+  "dependencies": {
+    "express": "4.19.2",
+    "whatsapp-web.js": "1.23.0",
+    "qrcode-terminal": "0.12.0",
+    "dotenv": "16.4.5"
+  }
+}
