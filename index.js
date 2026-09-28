@@ -41,7 +41,29 @@ const client = new Client({
     // PUPPETEER_EXECUTABLE_PATH); en tu compu local, si no tienes esa
     // variable configurada, deja que Puppeteer use el suyo (undefined).
     executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || undefined,
-    args: ['--no-sandbox', '--disable-setuid-sandbox'],
+    // Banderas para que Chrome consuma el mínimo de RAM posible — el plan
+    // de Render que usamos ($7/mes) solo trae 512 MB, así que apagamos todo
+    // lo que no necesitamos (GPU, extensiones, sincronización, etc.) y
+    // corremos Chrome en un solo proceso en vez de varios.
+    args: [
+      '--no-sandbox',
+      '--disable-setuid-sandbox',
+      '--disable-dev-shm-usage',
+      '--disable-gpu',
+      '--disable-software-rasterizer',
+      '--disable-extensions',
+      '--disable-background-networking',
+      '--disable-default-apps',
+      '--disable-sync',
+      '--disable-translate',
+      '--disable-features=site-per-process,TranslateUI',
+      '--no-first-run',
+      '--no-zygote',
+      '--single-process',
+      '--metrics-recording-only',
+      '--mute-audio',
+      '--hide-scrollbars',
+    ],
   },
   // Si WhatsApp vuelve a cambiar la página de WhatsApp Web de forma que
   // whatsapp-web.js no pueda detectar la versión automáticamente (el error

@@ -35,6 +35,10 @@ RUN apt-get update \
 ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true
 ENV PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium
 
+# Limitamos la memoria que usa el propio Node (no Chrome) para dejarle la
+# mayor parte de los 512 MB del plan de Render disponibles para Chrome.
+ENV NODE_OPTIONS=--max-old-space-size=128
+
 WORKDIR /app
 
 COPY package*.json ./
